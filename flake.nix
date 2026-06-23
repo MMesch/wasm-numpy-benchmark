@@ -45,12 +45,6 @@
 
       profile = ''
         eval "$(micromamba shell hook --shell=posix)"
-        export MAMBA_ROOT_PREFIX=$HOME/.mamba
-
-        export PATH="$HOME/.local/bin:$PATH"
-        if ! command -v empack &> /dev/null; then
-          python3 -m pip install --user empack
-        fi
       '';
     };
 

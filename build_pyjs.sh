@@ -15,11 +15,12 @@ if ! command -v micromamba &> /dev/null; then
     exit 1
 fi
 
-if ! command -v empack &> /dev/null; then
-    echo "Error: empack not found. Install with: python3 -m pip install --user empack"
-    echo "  (or re-enter the FHS dev shell: nix develop)"
-    exit 1
+if ! python3 -c "import empack" 2>/dev/null; then
+    echo "Installing empack (one-time)..."
+    python3 -m pip install --user empack
 fi
+# empack CLI lands in ~/.local/bin after pip install --user
+export PATH="$HOME/.local/bin:$PATH"
 
 echo "Creating emscripten-wasm32 conda environment..."
 micromamba create -y -f environment.yml --platform emscripten-wasm32 --prefix ./env
