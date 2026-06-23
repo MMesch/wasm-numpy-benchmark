@@ -14,7 +14,7 @@ tier_*.txt
 *_out.txt
 
 # Nix build output
-result/
+result
 
 # VM disk images
 *.qcow2
