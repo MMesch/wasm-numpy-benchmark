@@ -13,16 +13,16 @@ REPS=${2:-2000}
 echo "=========================================================="
 echo " Run 1: default tiering (Liftoff first, TurboFan if hot)"
 echo "=========================================================="
-node --trace-wasm-compilation --print-wasm-code bench.js "$N" "$REPS" \
+node --trace-wasm-compiler --print-wasm-code bench.js "$N" "$REPS" \
     > tier_default.txt 2>&1 || true
 echo "  -> raw V8 output saved to tier_default.txt"
-grep -E "compiling method|using.*tier" tier_default.txt | tail -40 || true
+grep -E "compiler:|kind:" tier_default.txt | tail -40 || true
 
 echo
 echo "=========================================================="
 echo " Run 2: forced straight to TurboFan (--no-liftoff)"
 echo "=========================================================="
-node --no-liftoff --trace-wasm-compilation --print-wasm-code bench.js "$N" "$REPS" \
+node --no-liftoff --trace-wasm-compiler --print-wasm-code bench.js "$N" "$REPS" \
     > tier_turbofan.txt 2>&1 || true
 echo "  -> raw V8 output saved to tier_turbofan.txt"
 
@@ -45,16 +45,16 @@ if [ ! -f pyjs_runtime_browser.wasm ]; then
     echo "  -> pyjs env not built; running ./build_pyjs.sh"
     bash ./build_pyjs.sh
 fi
-node --trace-wasm-compilation --print-wasm-code bench_pyjs.js "$N" "$REPS" \
+node --trace-wasm-compiler --print-wasm-code bench_pyjs.js "$N" "$REPS" \
     > tier_pyjs_default.txt 2>&1 || true
 echo "  -> raw V8 output saved to tier_pyjs_default.txt"
-grep -E "compiling method|using.*tier" tier_pyjs_default.txt | tail -40 || true
+grep -E "compiler:|kind:" tier_pyjs_default.txt | tail -40 || true
 
 echo
 echo "=========================================================="
 echo " Run 4: pyjs (emscripten-forge) forced TurboFan (--no-liftoff)"
 echo "=========================================================="
-node --no-liftoff --trace-wasm-compilation --print-wasm-code bench_pyjs.js "$N" "$REPS" \
+node --no-liftoff --trace-wasm-compiler --print-wasm-code bench_pyjs.js "$N" "$REPS" \
     > tier_pyjs_turbofan.txt 2>&1 || true
 echo "  -> raw V8 output saved to tier_pyjs_turbofan.txt"
 

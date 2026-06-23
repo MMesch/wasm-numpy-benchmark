@@ -11,10 +11,10 @@
  * To get the *actual executed native machine code* (not the static
  * .wasm bytecode), run with V8 disassembly flags, e.g.:
  *
- *   node --trace-wasm-compilation --print-wasm-code bench_pyjs.js \
+ *   node --trace-wasm-compiler --print-wasm-code bench_pyjs.js \
  *     > wasm_pyjs_trace.txt 2>&1
  *
- * --trace-wasm-compilation : logs each function as it compiles, and
+ * --trace-wasm-compiler : logs each function as it compiles, and
  *                             which tier compiled it (Liftoff vs TurboFan)
  * --print-wasm-code        : dumps the real disassembled native code
  *                             V8 generated for each wasm function
