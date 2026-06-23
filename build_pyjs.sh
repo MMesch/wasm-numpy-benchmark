@@ -31,7 +31,7 @@ echo "Copying pyjs runtime files..."
 cp ./env/lib_js/pyjs/* .
 
 echo "Packing environment with empack..."
-empack pack env --env-prefix ./env --outdir .
+empack pack env --env-prefix ./env --outdir . --config empack_config.yaml
 
 echo "Organizing package files..."
 mkdir -p packages

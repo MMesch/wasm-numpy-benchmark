@@ -24,7 +24,26 @@
  * Build first:
  *   ./build_pyjs.sh
  */
+const fs = require("fs");
 const path = require("path");
+
+// The pyjs runtime is browser-oriented: it loads the wasm, the empack
+// meta JSON, and every package tarball via fetch(). Node's undici fetch
+// rejects bare filesystem paths and file:// URLs, so shim global fetch
+// to serve local files from disk while passing real http(s) URLs through.
+const _origFetch = globalThis.fetch;
+globalThis.fetch = async function fetchLocal(input, init) {
+  const url = typeof input === "string" ? input : input && input.url;
+  if (url && (url.startsWith("/") || url.startsWith("file:"))) {
+    const fsPath = url.startsWith("file:") ? new URL(url).pathname : url;
+    const buf = fs.readFileSync(fsPath);
+    return new Response(new Uint8Array(buf), {
+      status: 200,
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+  }
+  return _origFetch(input, init);
+};
 
 const createModule = require("./pyjs_runtime_browser.js");
 
@@ -32,7 +51,12 @@ async function main() {
   console.log(
     "Loading pyjs runtime (CPython + numpy as WASM from emscripten-forge)...",
   );
+  // Node's fetch() cannot load bare filesystem paths or file:// URLs, so
+  // read the wasm binary ourselves and hand it to the emscripten module
+  // via wasmBinary — this bypasses the streaming/instantiateWasm fetch path.
+  const wasmPath = path.join(__dirname, "pyjs_runtime_browser.wasm");
   const pyjs = await createModule({
+    wasmBinary: fs.readFileSync(wasmPath),
     locateFile: (f) => path.join(__dirname, f),
   });
 
