@@ -9,6 +9,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+export MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-$HOME/.mamba}"
+
 if ! command -v micromamba &> /dev/null; then
     echo "Error: micromamba not found."
     echo "Are you inside the Nix FHS dev shell? (nix develop)"
