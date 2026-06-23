@@ -17,27 +17,16 @@ read the disassembly yourself.
 
 ## Quick start
 
-### Reproducible environment (Nix VM)
+### Prerequisites
 
-All three arms are designed to run inside a NixOS VM for reproducible
-results — same CPU model, same toolchain versions, same build flags.
+A normal Linux box with these on PATH:
 
-```bash
-nix build .#nixosConfigurations.devvm.config.system.build.vm
-./result/bin/run-nixos-vm
-```
+- `python3` (3.11+), `node` (v22+), `npm` — the three runtimes
+- `micromamba` — for the native conda env and the pyjs emscripten-forge env
+- `gdb`, `binutils` (`nm`, `objdump`) — only needed for the native
+  disassembly (`scripts/disasm.sh`)
 
-The VM boots NixOS with Python 3, Node.js, gcc, gdb, binutils, micromamba,
-empack, ungoogled-chromium. Log in as `generic` (password `generic`); SSH
-is on port 2222. Inside the VM, enter the FHS dev shell:
-
-```bash
-nix develop /path/to/benchmarks
-```
-
-(If you already have python3, node, npm, micromamba, gdb, and binutils on
-PATH on a normal Linux box, you can skip the VM — that's how the runs in
-this README were captured.)
+Install any missing ones via your system package manager.
 
 ### Setup
 
@@ -49,26 +38,26 @@ micromamba create -y -n native -c conda-forge python numpy
 npm install pyodide
 
 # pyjs: builds numpy + CPython + pyjs from emscripten-forge (local, no CDN)
-./build_pyjs.sh
+./scripts/build_pyjs.sh
 ```
 
 ### Run
 
 ```bash
 # 1. Native timing + disassembly
-micromamba run -n native python bench.py 1000000 2000 > native_out.txt
-bash disasm.sh                                 # prints + auto-disassembles the hot symbol
+micromamba run -n native python bench/bench.py 1000000 2000 > native_out.txt
+bash scripts/disasm.sh                            # prints + auto-disassembles the hot symbol
 
 # 2. WASM timing + V8 JIT disassembly (both arms, both tiers)
-bash run.sh 1000000 2000                       # writes tier_*.txt
+bash scripts/run.sh 1000000 2000                  # writes tier_*.txt
 
 # 3. Side-by-side timing table
-node bench.js 1000000 2000 > wasm_pyodide_out.txt
-node bench_pyjs.js 1000000 2000 > wasm_pyjs_out.txt
-python timing.py native_out.txt wasm_pyodide_out.txt wasm_pyjs_out.txt
+node bench/bench.js 1000000 2000 > wasm_pyodide_out.txt
+node bench/bench_pyjs.js 1000000 2000 > wasm_pyjs_out.txt
+python bench/timing.py native_out.txt wasm_pyodide_out.txt wasm_pyjs_out.txt
 ```
 
-Sample output from a run inside the VM (free-threaded CPython `python3.14t`
+Sample output from one run (free-threaded CPython `python3.14t`
 + numpy 2.5.0 native; numpy 2.4.3 via Pyodide; numpy 2.5.0 via pyjs):
 
 ```
@@ -90,22 +79,22 @@ signal; the timing table is context.
 
 | file | what it does |
 |---|---|
-| `bench.py` | Native arm. Times `np.add(a, b)` on two `float64` arrays of `N` elements over `REPS` reps after a 10-iter warmup. Prints numpy version, `np.show_config()`, timing, and the path to `_multiarray_umath.so` so `disasm.sh` can find the symbols. |
-| `bench.js` | Pyodide arm. Loads Pyodide + numpy (from `cdn.jsdelivr.net`, cached in `node_modules`) under Node, runs the same Python timing loop via `runPythonAsync`. |
-| `bench_pyjs.js` | pyjs arm. Loads the locally-built pyjs runtime (`pyjs_runtime_browser.wasm`) + empack-packed env, runs the same Python loop via `async_exec_eval`. No CDN fetch. Includes a `globalThis.fetch` shim and `wasmBinary` read-from-disk so the browser-oriented pyjs runtime works under Node. |
-| `build_pyjs.sh` | Creates an `emscripten-wasm32` conda env from `environment.yml`, copies the pyjs runtime `.js`/`.wasm` out, and packs the env into `packages/*.tar.gz` + `empack_env_meta.json` via empack. (empack 6.x requires `--config`, so this passes `empack_config.yaml`.) |
-| `disasm.sh` | Native disassembly. Finds `_multiarray_umath.so`, lists `DOUBLE_add*` symbols, prints numpy's `__cpu_dispatch__`, auto-picks the highest-tier suffixed variant, and `objdump`-disassembles it. Falls back to `gdb_disasm.py` if symbols are stripped. |
-| `run.sh` | WASM disassembly. Runs `bench.js` and `bench_pyjs.js` twice each under V8 disassembly flags: once with default tiering (Liftoff → TurboFan) and once with `--no-liftoff` (forced TurboFan). Writes `tier_default.txt`, `tier_turbofan.txt`, `tier_pyjs_default.txt`, `tier_pyjs_turbofan.txt`. |
-| `timing.py` | Parses the stdout of the three benchmarks and prints a side-by-side table. Accepts 2 or 3 files. |
-| `gdb_disasm.py` | Fallback for native disasm when `nm`/`objdump` can't see the symbol (static/stripped builds) — uses gdb to disassemble around a breakpoint in `PyUFunc_GenericFunction`. |
-| `environment.yml` | conda env spec for the pyjs arm: `python` + `numpy` + `pyjs` from `emscripten-forge-4x` / `conda-forge`. |
-| `empack_config.yaml` | Minimal empack pack config (a `default` filter with no exclusions = pack everything). Required by empack 6.x's `empack pack env --config`. |
+| `bench/bench.py` | Native arm. Times `np.add(a, b)` on two `float64` arrays of `N` elements over `REPS` reps after a 10-iter warmup. Prints numpy version, `np.show_config()`, timing, and the path to `_multiarray_umath.so` so `scripts/disasm.sh` can find the symbols. |
+| `bench/bench.js` | Pyodide arm. Loads Pyodide + numpy (from `cdn.jsdelivr.net`, cached in `node_modules`) under Node, runs the same Python timing loop via `runPythonAsync`. |
+| `bench/bench_pyjs.js` | pyjs arm. Loads the locally-built pyjs runtime (`pyjs_runtime_browser.wasm` at repo root) + empack-packed env, runs the same Python loop via `async_exec_eval`. No CDN fetch. Includes a `globalThis.fetch` shim and `wasmBinary` read-from-disk so the browser-oriented pyjs runtime works under Node. Resolves the runtime files at the repo root (parent of `bench/`). |
+| `scripts/build_pyjs.sh` | Creates an `emscripten-wasm32` conda env from `config/environment.yml`, copies the pyjs runtime `.js`/`.wasm` to the repo root, and packs the env into `packages/*.tar.gz` + `empack_env_meta.json` via empack. (empack 6.x requires `--config`, so this passes `config/empack_config.yaml`.) Build outputs land at the repo root, where `bench/bench_pyjs.js` expects them. |
+| `scripts/disasm.sh` | Native disassembly. Finds `_multiarray_umath.so`, lists `DOUBLE_add*` symbols, prints numpy's `__cpu_dispatch__`, auto-picks the highest-tier suffixed variant, and `objdump`-disassembles it. Falls back to `scripts/gdb_disasm.py` if symbols are stripped. |
+| `scripts/run.sh` | WASM disassembly. Runs `bench/bench.js` and `bench/bench_pyjs.js` twice each under V8 disassembly flags: once with default tiering (Liftoff → TurboFan) and once with `--no-liftoff` (forced TurboFan). Writes `tier_default.txt`, `tier_turbofan.txt`, `tier_pyjs_default.txt`, `tier_pyjs_turbofan.txt` at the repo root. |
+| `bench/timing.py` | Parses the stdout of the three benchmarks and prints a side-by-side table. Accepts 2 or 3 files. |
+| `scripts/gdb_disasm.py` | Fallback for native disasm when `nm`/`objdump` can't see the symbol (static/stripped builds) — uses gdb to disassemble around a breakpoint in `PyUFunc_GenericFunction`. |
+| `config/environment.yml` | conda env spec for the pyjs arm: `python` + `numpy` + `pyjs` from `emscripten-forge-4x` / `conda-forge`. |
+| `config/empack_config.yaml` | Minimal empack pack config (a `default` filter with no exclusions = pack everything). Required by empack 6.x's `empack pack env --config`. |
 
 ---
 
 ## How to obtain the disassembly
 
-### Native: `disasm.sh`
+### Native: `scripts/disasm.sh`
 
 The native arm is the easy one — numpy ships as a normal shared object,
 so the disassembly is just `objdump`. The only subtlety is picking the
@@ -115,7 +104,7 @@ so the disassembly is just `objdump`. The only subtlety is picking the
 `DOUBLE_add` is the SSE2 baseline; the `_X86_V3` / `_AVX512*` suffixed
 variants are what actually run on a modern CPU.
 
-`disasm.sh` does this for you. Its output, trimmed to the interesting
+`scripts/disasm.sh` does this for you. Its output, trimmed to the interesting
 parts:
 
 ```
@@ -139,10 +128,10 @@ variant instead — look for `zmm` registers and 512-bit `vaddpd`.)
 If `nm` finds nothing (static/stripped build), fall back to:
 
 ```bash
-micromamba run -n native gdb -q -x gdb_disasm.py --args python bench.py 1000 5
+micromamba run -n native gdb -q -x scripts/gdb_disasm.py --args python bench/bench.py 1000 5
 ```
 
-### WASM: `run.sh` + V8 disassembly flags
+### WASM: `scripts/run.sh` + V8 disassembly flags
 
 The wasm arms are harder because there's no shared object — numpy is
 compiled to a `.wasm` bytecode that V8 JITs into native code at runtime.
@@ -150,7 +139,7 @@ To see the *actual* native instructions (not the wasm opcodes), use V8's
 code-printing flags:
 
 ```bash
-node --trace-wasm-compiler --print-wasm-code bench.js 1000000 2000 > tier_default.txt 2>&1
+node --trace-wasm-compiler --print-wasm-code bench/bench.js 1000000 2000 > tier_default.txt 2>&1
 ```
 
 - `--trace-wasm-compiler` — logs each wasm function as it compiles and
@@ -162,11 +151,11 @@ node --trace-wasm-compiler --print-wasm-code bench.js 1000000 2000 > tier_defaul
 
 > Note: older V8 exposed `--trace-wasm-compilation`; that flag was
 > removed. Use `--trace-wasm-compiler` on current Node (v22+). If
-> `node --trace-wasm-compiler bench.js 1000 5` doesn't print
+> `node --trace-wasm-compiler bench/bench.js 1000 5` doesn't print
 > `kind: wasm function` / `compiler: …` lines, check `node --v8-options
 > | grep wasm` for the current flag name on your Node version.
 
-`run.sh` runs all four combinations (pyodide × {default, --no-liftoff},
+`scripts/run.sh` runs all four combinations (pyodide × {default, --no-liftoff},
 pyjs × {default, --no-liftoff}) and writes `tier_*.txt`. Each file is
 large — expect 2–4 million lines, with thousands of TurboFan-compiled
 function blocks. The next section covers how to find the one block that
@@ -443,7 +432,7 @@ per-access compare/branch), it just had nothing to vectorize.
 To test what a SIMD128-enabled wasm build would do, rebuild the
 emscripten-forge numpy with `-msimd128` (the recipe is at
 https://github.com/emscripten-forge/recipes — add the flag to the
-compiler args) and re-run `./build_pyjs.sh` + `bash run.sh`. The ufunc
+compiler args) and re-run `./scripts/build_pyjs.sh` + `bash scripts/run.sh`. The ufunc
 loop should then emit `f64x2.add`, V8 should lower it to `vaddpd xmm`,
 and the throughput gap to native should narrow from ~4:1 to ~2:1.
 
@@ -475,12 +464,14 @@ and the throughput gap to native should narrow from ~4:1 to ~2:1.
 ## Known limitations
 
 - The Pyodide arm fetches numpy from `cdn.jsdelivr.net` at runtime.
-  Works inside the VM (normal internet access) but may fail in
-  sandboxes with egress restrictions. The pyjs arm builds numpy locally
-  — no CDN fetch.
-- Native disassembly is CPU-dependent. Run inside the VM (or on a
-  pinned-CPU host) to get a reproducible baseline; the VM's CPU model
-  is pinned by the NixOS config.
+  Works on a host with normal internet access but may fail in sandboxes
+  with egress restrictions. The pyjs arm builds numpy locally — no CDN
+  fetch.
+- Native disassembly is CPU-dependent. The symbol numpy actually
+  dispatches to (e.g. `DOUBLE_add_X86_V3` for AVX2 vs an `_AVX512*`
+  variant for AVX-512) depends on what your CPU reports as available,
+  so the exact instructions you see will vary by host. `scripts/disasm.sh`
+  auto-picks the right one for your CPU via numpy's `__cpu_dispatch__`.
 - The V8 disassembly flag names drift across Node versions
   (`--trace-wasm-compilation` → `--trace-wasm-compiler`). If a flag is
   rejected, check `node --v8-options | grep wasm` for the current name.

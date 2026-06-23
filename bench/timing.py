@@ -3,10 +3,10 @@ Pulls timing numbers out of benchmark stdout (bench.py, bench.js,
 bench_pyjs.js) and prints a side-by-side table. Run the benchmarks
 first and redirect stdout into files, e.g.:
 
-    python bench.py 1000000 2000 > native_out.txt
-    node bench.js 1000000 2000 > wasm_pyodide_out.txt
-    node bench_pyjs.js 1000000 2000 > wasm_pyjs_out.txt
-    python timing.py native_out.txt wasm_pyodide_out.txt wasm_pyjs_out.txt
+    python bench/bench.py 1000000 2000 > native_out.txt
+    node bench/bench.js 1000000 2000 > wasm_pyodide_out.txt
+    node bench/bench_pyjs.js 1000000 2000 > wasm_pyjs_out.txt
+    python bench/timing.py native_out.txt wasm_pyodide_out.txt wasm_pyjs_out.txt
 
 Accepts 2 or 3 files. With 2, prints native vs wasm (pyodide).
 With 3, prints native vs wasm (pyodide) vs wasm (pyjs).

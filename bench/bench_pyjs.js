@@ -4,14 +4,15 @@
  * emscripten-forge), under Node.
  *
  * Unlike the Pyodide variant (bench.js), the numpy package is
- * built locally via ./build_pyjs.sh and served from ./packages/*.tar.gz
- * — no runtime CDN fetch. Build flags (e.g. -msimd128) are determined
- * by the emscripten-forge recipe.
+ * built locally via ./scripts/build_pyjs.sh and served from
+ * ./packages/*.tar.gz at the repo root — no runtime CDN fetch.
+ * Build flags (e.g. -msimd128) are determined by the
+ * emscripten-forge recipe.
  *
  * To get the *actual executed native machine code* (not the static
  * .wasm bytecode), run with V8 disassembly flags, e.g.:
  *
- *   node --trace-wasm-compiler --print-wasm-code bench_pyjs.js \
+ *   node --trace-wasm-compiler --print-wasm-code bench/bench_pyjs.js \
  *     > wasm_pyjs_trace.txt 2>&1
  *
  * --trace-wasm-compiler : logs each function as it compiles, and
@@ -22,10 +23,14 @@
  * Add --no-liftoff to force everything straight to TurboFan.
  *
  * Build first:
- *   ./build_pyjs.sh
+ *   ./scripts/build_pyjs.sh
  */
 const fs = require("fs");
 const path = require("path");
+
+// The pyjs runtime files and empack-packed env live at the repo root
+// (produced by scripts/build_pyjs.sh); this script lives in bench/.
+const REPO_ROOT = path.join(__dirname, "..");
 
 // The pyjs runtime is browser-oriented: it loads the wasm, the empack
 // meta JSON, and every package tarball via fetch(). Node's undici fetch
@@ -45,7 +50,7 @@ globalThis.fetch = async function fetchLocal(input, init) {
   return _origFetch(input, init);
 };
 
-const createModule = require("./pyjs_runtime_browser.js");
+const createModule = require(path.join(REPO_ROOT, "pyjs_runtime_browser.js"));
 
 async function main() {
   console.log(
@@ -54,16 +59,16 @@ async function main() {
   // Node's fetch() cannot load bare filesystem paths or file:// URLs, so
   // read the wasm binary ourselves and hand it to the emscripten module
   // via wasmBinary — this bypasses the streaming/instantiateWasm fetch path.
-  const wasmPath = path.join(__dirname, "pyjs_runtime_browser.wasm");
+  const wasmPath = path.join(REPO_ROOT, "pyjs_runtime_browser.wasm");
   const pyjs = await createModule({
     wasmBinary: fs.readFileSync(wasmPath),
-    locateFile: (f) => path.join(__dirname, f),
+    locateFile: (f) => path.join(REPO_ROOT, f),
   });
 
   console.log("Bootstrapping empack-packed environment...");
   await pyjs.bootstrap_from_empack_packed_environment(
-    path.join(__dirname, "empack_env_meta.json"),
-    path.join(__dirname, "packages") + "/",
+    path.join(REPO_ROOT, "empack_env_meta.json"),
+    path.join(REPO_ROOT, "packages") + "/",
   );
 
   const N = process.argv[2] ? parseInt(process.argv[2]) : 1_000_000;

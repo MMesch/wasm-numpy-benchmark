@@ -2,7 +2,7 @@ __pycache__/
 *.pyc
 node_modules/
 
-# Built by build_pyjs.sh
+# Built by scripts/build_pyjs.sh
 env/
 packages/
 *.tar.gz
@@ -12,9 +12,3 @@ empack_env_meta.json
 # Benchmark output
 tier_*.txt
 *_out.txt
-
-# Nix build output
-result
-
-# VM disk images
-*.qcow2

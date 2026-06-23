@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Extract real machine code for numpy's float64 add loop.
 #
-# Usage: ./disasm.sh
+# Usage: ./scripts/disasm.sh
 #
 # Requires: binutils (nm, objdump), python3+numpy (in conda env "native")
 set -euo pipefail
@@ -45,5 +45,5 @@ CANDIDATE=$(nm "$SO_PATH" 2>/dev/null | grep -E '\bDOUBLE_add\b|\bDOUBLE_add_' |
 if [ -n "${CANDIDATE:-}" ]; then
     echo
     echo "== Auto-detected candidate: $CANDIDATE =="
-    objdump -d --disassemble="$CANDIDATE" "$SO_PATH" || echo "objdump could not disassemble this symbol directly; try gdb_disasm.py instead."
+    objdump -d --disassemble="$CANDIDATE" "$SO_PATH" || echo "objdump could not disassemble this symbol directly; try scripts/gdb_disasm.py instead."
 fi

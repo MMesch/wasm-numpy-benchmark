@@ -4,7 +4,7 @@ Run long enough that any JIT-equivalent warmup (numpy's own dispatch
 table lookup) has settled, then time the steady-state loop.
 
 Usage:
-    python bench.py [N_ELEMENTS] [N_REPS]
+    python bench/bench.py [N_ELEMENTS] [N_REPS]
 """
 import sys
 import time

@@ -1,12 +1,12 @@
 """
 Fallback approach: numpy's inner SIMD loops are frequently *static*
 functions, invisible to `nm -D` (dynamic symbol table only). If
-native/disasm.sh finds nothing useful, use this gdb script instead,
+scripts/disasm.sh finds nothing useful, use this gdb script instead,
 which breaks on the umath dispatch entry point and disassembles
 whatever's actually running.
 
 Usage:
-    gdb -q -x gdb_disasm.py --args python3 bench.py 1000 5
+    gdb -q -x scripts/gdb_disasm.py --args python3 bench/bench.py 1000 5
 """
 import gdb
 
