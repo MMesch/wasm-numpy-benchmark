@@ -3,10 +3,12 @@
 #
 # Usage: ./disasm.sh
 #
-# Requires: binutils (nm, objdump), python3+numpy
+# Requires: binutils (nm, objdump), python3+numpy (in conda env "native")
 set -euo pipefail
 
-SO_PATH=$(python3 -c "import numpy as np; print(getattr(np, '_core', np.core)._multiarray_umath.__file__)")
+PY="micromamba run -n native python3"
+
+SO_PATH=$($PY -c "import numpy as np; print(getattr(np, '_core', np.core)._multiarray_umath.__file__)")
 echo "Extension: $SO_PATH"
 echo
 
@@ -20,7 +22,7 @@ nm "$SO_PATH" 2>/dev/null | grep -i double | grep -i add || true
 echo
 
 echo "== CPU dispatch info numpy reports for this machine =="
-python3 - <<'PY'
+$PY - <<'PY'
 import numpy as np
 core = getattr(np, "_core", np.core)
 try:

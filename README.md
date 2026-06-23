@@ -43,7 +43,7 @@ The repo should be checked out inside the VM (or mounted via virtiofs).
 
 Native side:
 ```bash
-pip install numpy
+micromamba create -y -n native -c conda-forge python numpy
 ```
 
 Pyodide side:
@@ -60,10 +60,10 @@ Pyjs side (builds numpy + CPython + pyjs from emscripten-forge):
 
 ```bash
 # 1. Native timing + disassembly
-python bench.py 1000000 2000
+micromamba run -n native python bench.py 1000000 2000
 bash disasm.sh
 # if nm -D finds nothing (static/stripped symbols), fall back to:
-gdb -q -x gdb_disasm.py --args python3 bench.py 1000 5
+micromamba run -n native gdb -q -x gdb_disasm.py --args python bench.py 1000 5
 
 # 2. WASM (Pyodide) timing + V8 JIT disassembly
 bash run.sh 1000000 2000
@@ -71,7 +71,7 @@ bash run.sh 1000000 2000
 # inspect tier_pyjs_default.txt and tier_pyjs_turbofan.txt (pyjs runs)
 
 # 3. Side-by-side timing table
-python bench.py 1000000 2000 > native_out.txt
+micromamba run -n native python bench.py 1000000 2000 > native_out.txt
 node bench.js 1000000 2000 > wasm_pyodide_out.txt
 node bench_pyjs.js 1000000 2000 > wasm_pyjs_out.txt
 python timing.py native_out.txt wasm_pyodide_out.txt wasm_pyjs_out.txt
@@ -101,7 +101,7 @@ python timing.py native_out.txt wasm_pyodide_out.txt wasm_pyjs_out.txt
 
 | arm | runtime | numpy source | SIMD128 flags |
 |---|---|---|---|
-| native | CPython (host) | pip / conda-forge | N/A (native AVX2/AVX512) |
+| native | CPython (host) | conda-forge | N/A (native AVX2/AVX512) |
 | wasm (pyodide) | CPython → Emscripten → V8 JIT | cdn.jsdelivr.net | unknown (likely no -msimd128) |
 | wasm (pyjs) | CPython → Emscripten → V8 JIT | built locally from emscripten-forge | inspectable / rebuildable |
 
